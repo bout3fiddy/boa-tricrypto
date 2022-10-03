@@ -202,7 +202,7 @@ def get_D(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS]) -> uint256
 
 @external
 @view
-def get_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256:
+def get_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256[2]:
     """
     Calculating x[i] given other balances x[0..N_COINS-1] and invariant D
     ANN = A * N**N
@@ -221,18 +221,290 @@ def get_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint
         k = 1
 
     a: uint256 = 10**28/27
-    b: uint256 = 10**28/9 + 2*10**10*gamma/27 - D**2/x[j]*gamma**2/x[k]*ANN/27**2/10**8/A_MULTIPLIER
+    b: uint256 = unsafe_sub(
+        unsafe_add(
+            unsafe_div(
+                unsafe_mul(2*10**10, gamma), 27
+            ), 10**28/9    
+        ),  
+        unsafe_div(
+            unsafe_div(
+                unsafe_div(
+                    unsafe_mul(
+                            unsafe_div(
+                                    unsafe_mul(
+                                        unsafe_div(D**2, x[j]), gamma**2
+                                    ), x[k]
+                                ), ANN
+                        ), 27**2
+                ), 10**8
+            ), A_MULTIPLIER
+        )
+    )
     c: uint256 = 0
     if D > x[j] + x[k]:
-        c = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 - gamma**2*(D-x[j]-x[k])/D*ANN/10**8/27/A_MULTIPLIER
+        c = unsafe_sub(
+                unsafe_add(
+                    unsafe_div(
+                        unsafe_div(
+                            unsafe_mul(gamma, 
+                                unsafe_add(gamma, 4*10**18)
+                                ), 27
+                        ), 10**8
+                    ), 10**28/9
+                ),
+                unsafe_div(
+                    unsafe_div(
+                        unsafe_div(
+                            unsafe_mul(
+                                    unsafe_div(
+                                        unsafe_mul(
+                                            gamma**2, unsafe_sub(
+                                                unsafe_sub(D, x[j]), x[k]
+                                            )
+                                        ), D
+                                ), ANN
+                            ), 10**8
+                        ), 27
+                    ), A_MULTIPLIER
+                )
+            )
     else:
-        c = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 + gamma**2*(x[j]+x[k]-D)/D*ANN/10**8/27/A_MULTIPLIER
-    d: uint256 = (10**18 + gamma)**2/10**8/27
+        c = unsafe_add(
+                unsafe_add(
+                    unsafe_div(
+                        unsafe_div(
+                            unsafe_mul(gamma, 
+                                unsafe_add(gamma, 4*10**18)
+                                ), 27
+                        ), 10**8
+                    ), 10**28/9
+                ),
+                unsafe_div(
+                    unsafe_div(
+                        unsafe_div(
+                            unsafe_mul(
+                                    unsafe_div(
+                                        unsafe_mul(
+                                            gamma**2, unsafe_sub(
+                                                unsafe_add(x[j], x[k]), D
+                                            )
+                                        ), D
+                                ), ANN
+                            ), 10**8
+                        ), 27
+                    ), A_MULTIPLIER
+                )
+            )
+    d: uint256 = unsafe_div(
+        unsafe_div(
+            unsafe_add(10**18, gamma)**2, 10**8
+        ), 27
+    )
 
-    delta0: uint256 = 3*a*c/b - b
-    delta1: uint256 = 9*a*c/b - 2*b - 27*a**2/b*d/b
+    delta0: uint256 = unsafe_sub(
+        unsafe_div(
+            unsafe_mul(
+                unsafe_mul(3, a), c
+            ), b
+        ), b
+    )
+    delta1: uint256 = unsafe_sub(
+        unsafe_sub(
+            unsafe_div(
+                    unsafe_mul(
+                        unsafe_mul(9, a), c
+                    ), b
+                ), unsafe_mul(2, b)
+        ), unsafe_div(
+            unsafe_mul(
+                unsafe_div(
+                    unsafe_mul(27, a**2), b
+                ), d
+            ), b
+        )
+    )
 
-    C1: uint256 = self.cbrt(b*(delta1 + isqrt(delta1**2 + 4*delta0**3/b))/2/10**18*b/10**18)
-    root_K0: uint256 = (10**18*b - 10**18*C1 + 10**18*b*delta0/C1)/(3*a)
+    C1: uint256 = self.cbrt(
+        unsafe_div(
+            unsafe_mul(
+                    unsafe_div(
+                            unsafe_div(
+                                unsafe_mul(
+                                    b, unsafe_add(
+                                        delta1, isqrt(
+                                            unsafe_add(
+                                                delta1**2, unsafe_div(
+                                                    unsafe_mul(
+                                                        4, delta0**3
+                                                    ), b
+                                                )
+                                            )
+                                        )
+                                    )
+                                ), 2
+                            ), 10**18
+                        ), b
+                ), 10**18
+        )
+    ) * 10**6
+    root_K0: uint256 = unsafe_div(
+        unsafe_add(
+            unsafe_sub(
+                unsafe_mul(10**18, b),
+                unsafe_mul(10**18, C1)
+            ), unsafe_div(
+                unsafe_mul(
+                    unsafe_mul(10**18, b), delta0
+                ), C1
+            )
+        ), 3*a
+    )
 
-    return root_K0*D/x[j]*D/x[k]*D/27/10**18
+    return [
+        unsafe_div(
+            unsafe_div(
+                unsafe_mul(
+                    unsafe_div(
+                        unsafe_mul(
+                            unsafe_div(
+                                unsafe_mul(root_K0, D), x[j]
+                            ), D
+                        ), x[k]
+                    ), D
+                ), 27
+            ), 10**18
+        ),
+        root_K0
+        ]
+
+
+### Functions below should be used in this branch only
+
+@internal
+@pure
+def sort(A0: uint256[N_COINS]) -> uint256[N_COINS]:
+    """
+    Insertion sort from high to low
+    """
+    A: uint256[N_COINS] = A0
+    for i in range(1, N_COINS):
+        x: uint256 = A[i]
+        cur: uint256 = i
+        for j in range(N_COINS):
+            y: uint256 = A[cur-1]
+            if y > x:
+                break
+            A[cur] = y
+            cur -= 1
+            if cur == 0:
+                break
+        A[cur] = x
+    return A
+
+@internal
+@view
+def _geometric_mean(unsorted_x: uint256[N_COINS], sort: bool = True) -> uint256:
+    """
+    (x[0] * x[1] * ...) ** (1/N)
+    """
+    x: uint256[N_COINS] = unsorted_x
+    if sort:
+        x = self.sort(x)
+    D: uint256 = x[0]
+    diff: uint256 = 0
+    for i in range(255):
+        D_prev: uint256 = D
+        tmp: uint256 = 10**18
+        for _x in x:
+            tmp = tmp * _x / D
+        D = D * ((N_COINS - 1) * 10**18 + tmp) / (N_COINS * 10**18)
+        if D > D_prev:
+            diff = D - D_prev
+        else:
+            diff = D_prev - D
+        if diff <= 1 or diff * 10**18 < D:
+            return D
+    raise "Did not converge"
+
+@external
+@view
+def newton_D(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS], K0_prev: uint256 = 0) -> uint256:
+    """
+    Finding the invariant using Newton method.
+    ANN is higher by the factor A_MULTIPLIER
+    ANN is already A * N**N
+
+    Currently uses 60k gas
+    """
+    # Safety checks
+    assert ANN > MIN_A - 1 and ANN < MAX_A + 1  # dev: unsafe values A
+    assert gamma > MIN_GAMMA - 1 and gamma < MAX_GAMMA + 1  # dev: unsafe values gamma
+
+    # Initial value of invariant D is that for constant-product invariant
+    # x: uint256[N_COINS] = self.sort(x_unsorted)
+    x: uint256[N_COINS] = x_unsorted
+
+    assert x[0] > 10**9 - 1 and x[0] < 10**15 * 10**18 + 1  # dev: unsafe values x[0]
+    for i in range(1, N_COINS):
+        frac: uint256 = x[i] * 10**18 / x[0]
+        assert frac > 10**11-1  # dev: unsafe values x[i]
+
+    S: uint256 = 0
+    for x_i in x:
+        S += x_i 
+
+    D: uint256 = 0
+    if K0_prev == 0:
+        D = N_COINS * self._geometric_mean(x, False)
+    else:
+        D = self.cbrt(x_unsorted[0]*x_unsorted[1]/10**18*x_unsorted[2]*27/K0_prev)*10**6
+
+    for i in range(255):
+        D_prev: uint256 = D
+
+        K0: uint256 = 10**18
+        for _x in x:
+            K0 = K0 * _x * N_COINS / D
+
+        _g1k0: uint256 = gamma + 10**18
+        if _g1k0 > K0:
+            _g1k0 = _g1k0 - K0 + 1
+        else:
+            _g1k0 = K0 - _g1k0 + 1
+
+        # D / (A * N**N) * _g1k0**2 / gamma**2
+        mul1: uint256 = 10**18 * D / gamma * _g1k0 / gamma * _g1k0 * A_MULTIPLIER / ANN
+
+        # 2*N*K0 / _g1k0
+        mul2: uint256 = (2 * 10**18) * N_COINS * K0 / _g1k0
+
+        neg_fprime: uint256 = (S + S * mul2 / 10**18) + mul1 * N_COINS / K0 - mul2 * D / 10**18
+
+        # D -= f / fprime
+        D_plus: uint256 = D * (neg_fprime + S) / neg_fprime
+        D_minus: uint256 = D*D / neg_fprime
+        if 10**18 > K0:
+            D_minus += D * (mul1 / neg_fprime) / 10**18 * (10**18 - K0) / K0
+        else:
+            D_minus -= D * (mul1 / neg_fprime) / 10**18 * (K0 - 10**18) / K0
+
+        if D_plus > D_minus:
+            D = D_plus - D_minus
+        else:
+            D = (D_minus - D_plus) / 2
+
+        diff: uint256 = 0
+        if D > D_prev:
+            diff = D - D_prev
+        else:
+            diff = D_prev - D
+
+        if diff * 10**14 < max(10**16, D):  # Could reduce precision for gas efficiency here
+            # Test that we are safe with the next newton_y
+            for _x in x:
+                frac: uint256 = _x * 10**18 / D
+                assert (frac > 10**16 - 1) and (frac < 10**20 + 1)  # dev: unsafe values x[i]
+            return D
+
+    raise "Did not converge"
