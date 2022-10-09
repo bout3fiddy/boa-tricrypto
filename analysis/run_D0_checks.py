@@ -11,7 +11,10 @@ items_y = pd.read_csv('data/newton_y_data.csv')
 items_y = items_y.drop(columns=['Unnamed: 0'])
 
 # Uncomment this to run use failed case only
-items_y = items_y.iloc[8122:]
+# items_y = items_y.iloc[8122:]
+# items_y = items_y.iloc[62553:]
+# items_y = items_y.iloc[90516:]
+
 
 items_D = pd.read_csv('data/newton_D_data.csv')
 items_D = items_D.drop(columns=['Unnamed: 0'])
@@ -38,6 +41,8 @@ def calculate(idx):
     x_original = [int(item['x0']), int(item['x1']), int(item['x2'])]
     D = int(item['D'])
     index = int(item['i'])
+    y_output = int(item['output'])
+
     x_copy = x_original[:]
 
     y, K0 = contract.get_y(ANN, GAMMA, x_original, D, index)
@@ -47,8 +52,7 @@ def calculate(idx):
     for i, item_D in item_D_slice.iterrows():
         x_unsorted = [int(item_D['x_unsorted_0']), int(item_D['x_unsorted_1']), int(item_D['x_unsorted_2'])]
 
-        fee_alpha = x_unsorted[index]/int(item['output'])
-        if x_unsorted[index]/int(item['output']) <= 1.:
+        if x_unsorted[index]/y_output <= 1.:
             remove_liquidity_tx_counter.append(tx_hash)
             return
 
@@ -57,9 +61,7 @@ def calculate(idx):
         D_orig_new = contract.newton_D(ANN, GAMMA, x_unsorted, K0)
         D_orig_new_gas = contract._computation.get_gas_used()
 
-        print(tx_hash)
-
-        assert y/int(item['output']) == 1.
+        assert y/y_output == 1.
         assert x_copy[index] < x_unsorted[index]
         assert D_orig_new/int(item_D['output']) == 1.
 
