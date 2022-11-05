@@ -28,7 +28,13 @@ def cbrt(x: uint256) -> uint256:
 
     # we increase precision of input `x` by multiplying 10 ** 36.
     # in such cases: cbrt(10**18) = 10**18, cbrt(1) = 10**12
-    xx: uint256 = unsafe_mul(x, 10**36)
+    xx: uint256 = 0
+    if x >= 115792089237316195423570985008687907853269 * 10**18:
+        xx = x
+    elif x >= 115792089237316195423570985008687907853269:
+        xx = unsafe_mul(x, 10**18)
+    else:
+        xx = unsafe_mul(x, 10**36)
 
     # get log2(x) for approximating initial value
     # logic is: cbrt(a) = cbrt(2**(log2(a))) = 2**(log2(a) / 3) ≈ 2**|log2(a)/3|
@@ -77,7 +83,12 @@ def cbrt(x: uint256) -> uint256:
     a = unsafe_div(unsafe_add(unsafe_mul(2, a), unsafe_div(xx, unsafe_mul(a, a))), 3)
     a = unsafe_div(unsafe_add(unsafe_mul(2, a), unsafe_div(xx, unsafe_mul(a, a))), 3)
 
-    return a
+    if x >= 115792089237316195423570985008687907853269 * 10**18:
+        return a*10**12
+    elif x >= 115792089237316195423570985008687907853269:
+        return a*10**6
+    else:
+        return a
 
 
 @internal
@@ -199,6 +210,84 @@ def get_D(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS]) -> uint256
     #TODO: add tricrypto math optimisations here
     return ANN
 
+@external
+@view
+def get_y_old(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256[2]:
+    """
+    Calculating x[i] given other balances x[0..N_COINS-1] and invariant D
+    ANN = A * N**N
+    """
+
+    j: uint256 = 0
+    k: uint256 = 0
+    if i == 0:
+        j = 1
+        k = 2
+    elif i == 1:
+        j = 0
+        k = 2
+    elif i == 2:
+        j = 0
+        k = 1
+
+    # a: uint256 = 10**28/27
+    # b: uint256 = 10**28/9 + 2*10**10*gamma/27 - D**2/x[j]*gamma**2*ANN/27**2/10**8/A_MULTIPLIER/x[k]
+    # c: uint256 = 0
+    # if D > x[j] + x[k]:
+    #     c = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 - gamma**2*(D-x[j]-x[k])/D*ANN/10**8/27/A_MULTIPLIER
+    # else:
+    #     c = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 + gamma**2*(x[j]+x[k]-D)/D*ANN/10**8/27/A_MULTIPLIER
+    # d: uint256 = (10**18 + gamma)**2/27/10**8
+
+    a: uint256 = 10**36/27
+    b: uint256 = 10**36/9 + 2*10**18*gamma/27 - D**2/x[j]*gamma**2*ANN/27**2/A_MULTIPLIER/x[k]
+    c: uint256 = 0
+    if D > x[j] + x[k]:
+        c = 10**36/9 + gamma*(gamma + 4*10**18)/27 - gamma**2*(D-x[j]-x[k])/D*ANN/27/A_MULTIPLIER
+    else:
+        c = 10**36/9 + gamma*(gamma + 4*10**18)/27 + gamma**2*(x[j]+x[k]-D)/D*ANN/27/A_MULTIPLIER
+    d: uint256 = (10**18 + gamma)**2/27
+
+    delta0: uint256 = 0
+    delta0_s1: uint256 = 3*a*c/b
+    if delta0_s1 > b:
+        delta0 = delta0_s1 - b
+    else:
+        delta0 = b - delta0_s1
+    
+    delta1: uint256 = 0
+    delta1_s1: uint256 = 9*a*c/b
+    delta1_s2: uint256 = 2*b + 27*a**2/b*d/b
+    if delta1_s1 > delta1_s2:
+        delta1 = delta1_s1 - delta1_s2
+    else:
+        delta1 = delta1_s2 - delta1_s1
+
+    C1: uint256 = 0
+    root_K0: uint256 = 0
+    if delta0_s1 > b:
+        if delta1_s1 > delta1_s2:
+            C1 = self.cbrt(b*(delta1 + isqrt(delta1**2 + 4*delta0**2/b*delta0))/2/10**18*b/10**18)
+        else:
+            C1 = self.cbrt(b*(isqrt(delta1**2 + 4*delta0**2/b*delta0) - delta1)/2/10**18*b/10**18)
+        root_K0 = (10**18*b + 10**18*b/C1*delta0 - 10**18*C1)/(3*a)
+    else:
+        if delta1_s1 > delta1_s2:
+            C1 = self.cbrt(b*(delta1 + isqrt(delta1**2 - 4*delta0**2/b*delta0))/2/10**18*b/10**18)
+        else:
+            C1 = self.cbrt(b*(isqrt(delta1**2 - 4*delta0**2/b*delta0) - delta1)/2/10**18*b/10**18)
+        root_K0 = (10**18*b - 10**18*b/C1*delta0 - 10**18*C1)/(3*a)
+
+    # print('a: ', a)
+    # print('b: ', b)
+    # print('c: ', c)
+    # print('d: ', d)
+    # print('delta0: ', delta0)
+    # print('delta1: ', delta1)
+    # print('C1: ', C1)
+    # print('root_K0: ', root_K0)
+
+    return [root_K0*D/x[j]*D/x[k]*D/27/10**18, root_K0]
 
 @external
 @view
@@ -221,26 +310,28 @@ def get_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint
         k = 1
 
     a: uint256 = 10**28/27
-    b: uint256 = unsafe_sub(
-        unsafe_add(
-            unsafe_div(
-                unsafe_mul(2*10**10, gamma), 27
-            ), 10**28/9    
-        ),  
-        unsafe_div(
-            unsafe_div(
-                unsafe_div(
-                    unsafe_mul(
-                            unsafe_div(
-                                    unsafe_mul(
-                                        unsafe_div(D**2, x[j]), gamma**2
-                                    ), x[k]
-                                ), ANN
-                        ), 27**2
-                ), 10**8
-            ), A_MULTIPLIER
-        )
+
+    b: uint256 = unsafe_sub(	
+        unsafe_add(	
+            unsafe_div(	
+                unsafe_mul(2*10**10, gamma), 27	
+            ), 10**28/9    	
+        ),  	
+        unsafe_div(	
+            unsafe_div(	
+                unsafe_div(	
+                    unsafe_mul(	
+                            unsafe_div(	
+                                    unsafe_mul(	
+                                        unsafe_div(D**2, x[j]), gamma**2	
+                                    ), x[k]	
+                                ), ANN	
+                        ), 27**2	
+                ), 10**8	
+            ), A_MULTIPLIER	
+        )	
     )
+
     c: uint256 = 0
     if D > x[j] + x[k]:
         c = unsafe_sub(
@@ -329,25 +420,6 @@ def get_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint
         )
     )
 
-    # print(a)
-    # print(b)
-    # print(c)
-    # print(d)
-    # print(delta0)
-    # print(delta1)
-    # print(unsafe_div(
-    #         unsafe_mul(
-    #             unsafe_mul(3, a), c
-    #         ), b
-    #     ))
-    # print(unsafe_sub(
-    #     unsafe_div(
-    #         unsafe_mul(
-    #             unsafe_mul(3, a), c
-    #         ), b
-    #     ), b
-    # ))
-
     cbrt_arg: uint256 = unsafe_div(
             unsafe_mul(
                     unsafe_div(
@@ -357,18 +429,18 @@ def get_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint
                                         delta1, isqrt(
                                             unsafe_add(
                                                 delta1**2, 
-                                                unsafe_div(
-                                                    unsafe_mul(
-                                                        4, delta0**3
-                                                    ), b
-                                                )
-                                                # unsafe_mul(
                                                 # unsafe_div(
                                                 #     unsafe_mul(
-                                                #         4, delta0**2
+                                                #         4, delta0**3
                                                 #     ), b
-                                                # ), delta0
                                                 # )
+                                                unsafe_mul(
+                                                unsafe_div(
+                                                    unsafe_mul(
+                                                        4, delta0**2
+                                                    ), b
+                                                ), delta0
+                                                )
                                             )
                                         )
                                     )
@@ -377,9 +449,11 @@ def get_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint
                         ), b
                 ), 10**18
         )
+
     C1: uint256 = self.cbrt(
         cbrt_arg
     )
+
     root_K0: uint256 = unsafe_div(
         unsafe_add(
             unsafe_sub(
