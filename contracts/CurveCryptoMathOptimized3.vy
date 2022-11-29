@@ -212,6 +212,47 @@ def get_D(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS]) -> uint256
 
 @external
 @view
+def get_y_old_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint256, i: uint256) -> uint256[2]:
+    """
+    Calculating x[i] given other balances x[0..N_COINS-1] and invariant D
+    ANN = A * N**N
+    """
+
+    j: uint256 = 0
+    k: uint256 = 0
+    if i == 0:
+        j = 1
+        k = 2
+    elif i == 1:
+        j = 0
+        k = 2
+    elif i == 2:
+        j = 0
+        k = 1
+
+    ANN: int256 = convert(_ANN, int256)
+    gamma: int256 = convert(_gamma, int256)
+    D: int256 = convert(_D, int256)
+    x_j: int256 = convert(x[j], int256)
+    x_k: int256 = convert(x[k], int256)
+
+    a: int256 = 10**28/27
+    b: int256 = 10**28/9 + 2*10**10*gamma/27 - D**2/x_j*gamma**2*ANN/27**2/10**8/convert(A_MULTIPLIER, int256)/x_k
+    c: int256 = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 + gamma**2*(x_j+x_k-D)/D*ANN/10**8/27/convert(A_MULTIPLIER, int256)
+    d: int256 = (10**18 + gamma)**2/27/10**8
+
+    delta0: int256 = 3*a*c/b - b
+    delta1: int256 = 9*a*c/b - 2*b - 27*a**2/b*d/b
+    b_cbrt: int256 = convert(self.cbrt(convert(b, uint256)), int256)
+    second_cbrt: int256 = convert(self.cbrt(convert((delta1 + convert(isqrt(convert(delta1**2+4*delta0**2/b*delta0, uint256)), int256)), uint256)/2), int256)
+    C1: int256 = b_cbrt*b_cbrt/10**18*second_cbrt/10**18
+    root_K0: int256 = (b + b*delta0/C1 - C1)/3
+    root: uint256 = convert(D*D/27/x_k*D/x_j*root_K0/a, uint256)
+
+    return [root, convert(root_K0, uint256)]
+
+@external
+@view
 def get_y_old(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256[2]:
     """
     Calculating x[i] given other balances x[0..N_COINS-1] and invariant D
@@ -230,23 +271,23 @@ def get_y_old(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: 
         j = 0
         k = 1
 
-    # a: uint256 = 10**28/27
-    # b: uint256 = 10**28/9 + 2*10**10*gamma/27 - D**2/x[j]*gamma**2*ANN/27**2/10**8/A_MULTIPLIER/x[k]
-    # c: uint256 = 0
-    # if D > x[j] + x[k]:
-    #     c = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 - gamma**2*(D-x[j]-x[k])/D*ANN/10**8/27/A_MULTIPLIER
-    # else:
-    #     c = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 + gamma**2*(x[j]+x[k]-D)/D*ANN/10**8/27/A_MULTIPLIER
-    # d: uint256 = (10**18 + gamma)**2/27/10**8
-
-    a: uint256 = 10**36/27
-    b: uint256 = 10**36/9 + 2*10**18*gamma/27 - D**2/x[j]*gamma**2*ANN/27**2/A_MULTIPLIER/x[k]
+    a: uint256 = 10**28/27
+    b: uint256 = 10**28/9 + 2*10**10*gamma/27 - D**2/x[j]*gamma**2*ANN/27**2/10**8/A_MULTIPLIER/x[k]
     c: uint256 = 0
     if D > x[j] + x[k]:
-        c = 10**36/9 + gamma*(gamma + 4*10**18)/27 - gamma**2*(D-x[j]-x[k])/D*ANN/27/A_MULTIPLIER
+        c = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 - gamma**2*(D-x[j]-x[k])/D*ANN/10**8/27/A_MULTIPLIER
     else:
-        c = 10**36/9 + gamma*(gamma + 4*10**18)/27 + gamma**2*(x[j]+x[k]-D)/D*ANN/27/A_MULTIPLIER
-    d: uint256 = (10**18 + gamma)**2/27
+        c = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 + gamma**2*(x[j]+x[k]-D)/D*ANN/10**8/27/A_MULTIPLIER
+    d: uint256 = (10**18 + gamma)**2/27/10**8
+
+    # a: uint256 = 10**36/27
+    # b: uint256 = 10**36/9 + 2*10**18*gamma/27 - D**2/x[j]*gamma**2*ANN/27**2/A_MULTIPLIER/x[k]
+    # c: uint256 = 0
+    # if D > x[j] + x[k]:
+    #     c = 10**36/9 + gamma*(gamma + 4*10**18)/27 - gamma**2*(D-x[j]-x[k])/D*ANN/27/A_MULTIPLIER
+    # else:
+    #     c = 10**36/9 + gamma*(gamma + 4*10**18)/27 + gamma**2*(x[j]+x[k]-D)/D*ANN/27/A_MULTIPLIER
+    # d: uint256 = (10**18 + gamma)**2/27
 
     delta0: uint256 = 0
     delta0_s1: uint256 = 3*a*c/b
@@ -267,15 +308,15 @@ def get_y_old(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: 
     root_K0: uint256 = 0
     if delta0_s1 > b:
         if delta1_s1 > delta1_s2:
-            C1 = self.cbrt(b*(delta1 + isqrt(delta1**2 + 4*delta0**2/b*delta0))/2/10**18*b/10**18)
+            C1 = self.cbrt(b*(delta1 + isqrt(delta1**2 + 4*delta0**2/b*delta0))/2*b)/10**12
         else:
-            C1 = self.cbrt(b*(isqrt(delta1**2 + 4*delta0**2/b*delta0) - delta1)/2/10**18*b/10**18)
+            C1 = self.cbrt(b*(isqrt(delta1**2 + 4*delta0**2/b*delta0) - delta1)/2*b)/10**12
         root_K0 = (10**18*b + 10**18*b/C1*delta0 - 10**18*C1)/(3*a)
     else:
         if delta1_s1 > delta1_s2:
-            C1 = self.cbrt(b*(delta1 + isqrt(delta1**2 - 4*delta0**2/b*delta0))/2/10**18*b/10**18)
+            C1 = self.cbrt(b*(delta1 + isqrt(delta1**2 - 4*delta0**2/b*delta0))/2*b)/10**12
         else:
-            C1 = self.cbrt(b*(isqrt(delta1**2 - 4*delta0**2/b*delta0) - delta1)/2/10**18*b/10**18)
+            C1 = self.cbrt(b*(isqrt(delta1**2 - 4*delta0**2/b*delta0) - delta1)/2*b)/10**12
         root_K0 = (10**18*b - 10**18*b/C1*delta0 - 10**18*C1)/(3*a)
 
     # print('a: ', a)

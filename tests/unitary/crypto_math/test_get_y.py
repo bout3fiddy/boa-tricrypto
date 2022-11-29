@@ -43,7 +43,7 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
     result_original = tricrypto_math.newton_y(A, gamma, X, D, j)
     try:
-        (result_get_y, K0) = tricrypto_math.get_y_old(A, gamma, X, D, j)
+        (result_get_y, K0) = tricrypto_math.get_y_old_int(A, gamma, X, D, j)
     except Exception:
         # May revert is the state is unsafe for the next time
         safe = all(f >= 1.1e16 and f <= 0.9e20 for f in [_x * 10**18 // D for _x in X])
@@ -57,4 +57,4 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
     note("{\n"f"\t'ANN': {A},\n\t'D': {D},\n\t'xD': {xD},\n\t'yD': {yD},\n\t'zD': {zD},\n\t'GAMMA': {gamma},\n\t'index': {j}\n""}")
     # print(result_original)
     # print(result_get_y)
-    assert abs(result_original - result_get_y) <= max(10**5, result_original/1e14)  # 10000 is $1e-14
+    assert abs(result_original - result_get_y) <= max(10**7, result_original/1e12)  # 10000 is $1e-14
