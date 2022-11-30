@@ -212,7 +212,7 @@ def get_D(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS]) -> uint256
 
 @external
 @view
-def get_y_old_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint256, i: uint256) -> uint256[2]:
+def get_y_safe_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint256, i: uint256) -> uint256[2]:
     """
     Calculating x[i] given other balances x[0..N_COINS-1] and invariant D
     ANN = A * N**N
@@ -249,11 +249,11 @@ def get_y_old_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint2
     root_K0: int256 = (b + b*delta0/C1 - C1)/3
     root: uint256 = convert(D*D/27/x_k*D/x_j*root_K0/a, uint256)
 
-    return [root, convert(root_K0, uint256)]
+    return [root, convert(root_K0/a, uint256)]
 
 @external
 @view
-def get_y_old(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256[2]:
+def get_y_safe(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256[2]:
     """
     Calculating x[i] given other balances x[0..N_COINS-1] and invariant D
     ANN = A * N**N
@@ -279,15 +279,6 @@ def get_y_old(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: 
     else:
         c = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 + gamma**2*(x[j]+x[k]-D)/D*ANN/10**8/27/A_MULTIPLIER
     d: uint256 = (10**18 + gamma)**2/27/10**8
-
-    # a: uint256 = 10**36/27
-    # b: uint256 = 10**36/9 + 2*10**18*gamma/27 - D**2/x[j]*gamma**2*ANN/27**2/A_MULTIPLIER/x[k]
-    # c: uint256 = 0
-    # if D > x[j] + x[k]:
-    #     c = 10**36/9 + gamma*(gamma + 4*10**18)/27 - gamma**2*(D-x[j]-x[k])/D*ANN/27/A_MULTIPLIER
-    # else:
-    #     c = 10**36/9 + gamma*(gamma + 4*10**18)/27 + gamma**2*(x[j]+x[k]-D)/D*ANN/27/A_MULTIPLIER
-    # d: uint256 = (10**18 + gamma)**2/27
 
     delta0: uint256 = 0
     delta0_s1: uint256 = 3*a*c/b
@@ -318,15 +309,6 @@ def get_y_old(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: 
         else:
             C1 = self.cbrt(b*(isqrt(delta1**2 - 4*delta0**2/b*delta0) - delta1)/2*b)/10**12
         root_K0 = (10**18*b - 10**18*b/C1*delta0 - 10**18*C1)/(3*a)
-
-    # print('a: ', a)
-    # print('b: ', b)
-    # print('c: ', c)
-    # print('d: ', d)
-    # print('delta0: ', delta0)
-    # print('delta1: ', delta1)
-    # print('C1: ', C1)
-    # print('root_K0: ', root_K0)
 
     return [root_K0*D/x[j]*D/x[k]*D/27/10**18, root_K0]
 
@@ -470,11 +452,6 @@ def get_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint
                                         delta1, isqrt(
                                             unsafe_add(
                                                 delta1**2, 
-                                                # unsafe_div(
-                                                #     unsafe_mul(
-                                                #         4, delta0**3
-                                                #     ), b
-                                                # )
                                                 unsafe_mul(
                                                 unsafe_div(
                                                     unsafe_mul(
