@@ -247,6 +247,8 @@ def get_y_safe_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint
         divider = 10**24
     elif d0 > 10**44:
         divider = 10**22
+    elif d0 > 10**40:
+        divider = 10**20
     elif d0 > 10**36:
         divider = 10**18
     elif d0 > 10**28:
