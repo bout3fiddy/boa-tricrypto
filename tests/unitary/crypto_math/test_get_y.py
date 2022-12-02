@@ -1,11 +1,12 @@
-from datetime import timedelta
-
 import boa
 import pytest
 import simulation_int_many as sim
 from hypothesis import example, given, settings, note
 from hypothesis import strategies as st
 from vyper.utils import SizeLimits
+from datetime import timedelta
+from decimal import Decimal
+from simulation_ma_4 import inv_target_decimal as inv_target
 
 
 N_COINS = 3
@@ -19,7 +20,6 @@ MAX_A = 1000 * A_MUL
 MIN_GAMMA = 10**10
 MAX_GAMMA = 5 * 10**16
 
-
 @given(
        A=st.integers(min_value=MIN_A, max_value=MAX_A),
        D=st.integers(min_value=10**18, max_value=10**14 * 10**18),  # 1 USD to 100T USD
@@ -29,18 +29,17 @@ MAX_GAMMA = 5 * 10**16
        gamma=st.integers(min_value=MIN_GAMMA, max_value=MAX_GAMMA),
        j=st.integers(min_value=0, max_value=2),
 )
-@example(
-    A=2700,
-    D=1000000000000020354,
-    xD=90799920203792636,
-    yD=10010000000000000,
-    zD=501320194280195705,
-    gamma=10000000000,
-    j=1,
-)
 @settings(max_examples=MAX_SAMPLES, deadline=timedelta(seconds=1000))
 def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
+
+    A_dec = Decimal(A) / 10000 / 27
+
+    def calculate_F_by_y0(y0):
+        new_X = X[:]
+        new_X[j] = y0
+        return inv_target(A_dec, gamma, new_X, D)
+
     result_original = tricrypto_math.newton_y(A, gamma, X, D, j)
     try:
         (result_get_y, K0) = tricrypto_math.get_y_safe_int(A, gamma, X, D, j)
@@ -54,5 +53,8 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
             raise
         else:
             return
-    note("{\n"f"\t'ANN': {A},\n\t'D': {D},\n\t'xD': {xD},\n\t'yD': {yD},\n\t'zD': {zD},\n\t'GAMMA': {gamma},\n\t'index': {j}\n""}")
-    assert abs(result_original - result_get_y) <= max(10**7, result_original/1e12)  # 10000 is $1e-14
+    note("{\n"f"\t'ANN': {A},\n\t'D': {D},\n\t'xD': {xD},\n\t'yD': {yD},\n\t'zD': {zD},\n\t'GAMMA': {gamma},\n\t'index': {j}\n""}\n")
+    assert (
+        abs(result_original - result_get_y) <= max(10**4, result_original/1e10) or
+        abs(calculate_F_by_y0(result_get_y)) <= abs(calculate_F_by_y0(result_original))
+    )

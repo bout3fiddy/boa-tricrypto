@@ -236,14 +236,40 @@ def get_y_safe_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint
     x_j: int256 = convert(x[j], int256)
     x_k: int256 = convert(x[k], int256)
 
-    a: int256 = 10**28/27
-    b: int256 = 10**28/9 + 2*10**10*gamma/27 - D**2/x_j*gamma**2*ANN/27**2/10**8/convert(A_MULTIPLIER, int256)/x_k
-    c: int256 = 10**28/9 + gamma*(gamma + 4*10**18)/27/10**8 + gamma**2*(x_j+x_k-D)/D*ANN/10**8/27/convert(A_MULTIPLIER, int256)
-    d: int256 = (10**18 + gamma)**2/27/10**8
+    a: int256 = 10**36/27
+    b: int256 = 10**36/9 + 2*10**18*gamma/27 - D**2/x_j*gamma**2*ANN/27**2/convert(A_MULTIPLIER, int256)/x_k
+    c: int256 = 10**36/9 + gamma*(gamma + 4*10**18)/27 + gamma**2*(x_j+x_k-D)/D*ANN/27/convert(A_MULTIPLIER, int256)
+    d: int256 = (10**18 + gamma)**2/27
+
+    d0: int256 = abs(3*a*c/b - b)
+    divider: int256 = 0
+    if d0 > 10**48:
+        divider = 10**24
+    elif d0 > 10**44:
+        divider = 10**22
+    elif d0 > 10**36:
+        divider = 10**18
+    elif d0 > 10**28:
+        divider = 10**14
+    elif d0 > 10**24:
+        divider = 10**12
+    elif d0 > 10**20:
+        divider = 10**10
+    else:
+        divider = 1
+
+    a /= divider
+    b /= divider
+    c /= divider
+    d /= divider
 
     delta0: int256 = 3*a*c/b - b
     delta1: int256 = 9*a*c/b - 2*b - 27*a**2/b*d/b
-    b_cbrt: int256 = convert(self.cbrt(convert(b, uint256)), int256)
+    b_cbrt: int256 = 0
+    if b >= 0:
+        b_cbrt = convert(self.cbrt(convert(b, uint256)), int256)
+    else:
+        b_cbrt = -convert(self.cbrt(convert(-b, uint256)), int256)
     second_cbrt: int256 = convert(self.cbrt(convert((delta1 + convert(isqrt(convert(delta1**2+4*delta0**2/b*delta0, uint256)), int256)), uint256)/2), int256)
     C1: int256 = b_cbrt*b_cbrt/10**18*second_cbrt/10**18
     root_K0: int256 = (b + b*delta0/C1 - C1)/3
@@ -573,15 +599,15 @@ def newton_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: u
         else:
             y = y_plus - y_minus
 
-        # diff: uint256 = 0
-        # if y > y_prev:
-        #     diff = y - y_prev
-        # else:
-        #     diff = y_prev - y
-        # if diff < max(convergence_limit, y / 10**14):
-        #     frac: uint256 = y * 10**18 / D
-        #     # assert (frac > 10**16 - 1) and (frac < 10**20 + 1)  # dev: unsafe value for y
-        #     return y
+        diff: uint256 = 0
+        if y > y_prev:
+            diff = y - y_prev
+        else:
+            diff = y_prev - y
+        if diff < max(convergence_limit, y / 10**14):
+            frac: uint256 = y * 10**18 / D
+            # assert (frac > 10**16 - 1) and (frac < 10**20 + 1)  # dev: unsafe value for y
+            return y
 
     # raise "Did not converge"
     return y
