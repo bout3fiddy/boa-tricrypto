@@ -244,26 +244,37 @@ def get_y_safe_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint
     d0: int256 = abs(3*a*c/b - b)
     divider: int256 = 0
     if d0 > 10**48:
-        divider = 10**24
+        divider = 10**30
     elif d0 > 10**44:
-        divider = 10**22
+        divider = 10**26
     elif d0 > 10**40:
-        divider = 10**20
+        divider = 10**22
     elif d0 > 10**36:
         divider = 10**18
-    # elif d0 > 10**28:
-    #     divider = 10**14
-    # elif d0 > 10**24:
-    #     divider = 10**12
-    # elif d0 > 10**20:
-    #     divider = 10**10
+    elif d0 > 10**32:
+        divider = 10**14
+    elif d0 > 10**28:
+        divider = 10**10
+    elif d0 > 10**24:
+        divider = 10**6
+    elif d0 > 10**20:
+        divider = 10**2
     else:
         divider = 1
 
-    a /= divider
-    b /= divider
-    c /= divider
-    d /= divider
+    additional_prec: int256 = 0
+    if abs(a) > abs(b):
+        additional_prec =  abs(a)/abs(b)
+        a = a * additional_prec / divider
+        b = b * additional_prec / divider
+        c = c * additional_prec / divider
+        d = d * additional_prec / divider
+    else:
+        additional_prec =  abs(b)/abs(a)
+        a = a / additional_prec / divider
+        b = b / additional_prec / divider
+        c = c / additional_prec / divider
+        d = d / additional_prec / divider
 
     delta0: int256 = 3*a*c/b - b
     delta1: int256 = 9*a*c/b - 2*b - 27*a**2/b*d/b
@@ -272,8 +283,37 @@ def get_y_safe_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint
         b_cbrt = convert(self.cbrt(convert(b, uint256)), int256)
     else:
         b_cbrt = -convert(self.cbrt(convert(-b, uint256)), int256)
-    second_cbrt: int256 = convert(self.cbrt(convert((delta1 + convert(isqrt(convert(delta1**2+4*delta0**2/b*delta0, uint256)), int256)), uint256)/2), int256)
+
+    sqrt_arg: int256 = delta1**2 + 4*delta0**2/b*delta0
+    sqrt_val: int256 = 0
+    if sqrt_arg > 0:
+        sqrt_val = convert(isqrt(convert(sqrt_arg, uint256)), int256)
+    else:
+        sqrt_val = -convert(isqrt(convert(-sqrt_arg, uint256)), int256)
+
+    second_cbrt: int256 = 0
+    if delta1 > 0:
+        second_cbrt = convert(self.cbrt(convert((delta1 + sqrt_val), uint256)/2), int256)
+    else:
+        second_cbrt = -convert(self.cbrt(convert(-(delta1 - sqrt_val), uint256)/2), int256)
+
     C1: int256 = b_cbrt*b_cbrt/10**18*second_cbrt/10**18
+
+    # print('\nVyper')
+    # # print('a:          ', a)
+    # # print('b:          ', b)
+    # # print('c:          ', c)
+    # # print('d:          ', d)
+    # print('delta0:     ', delta0)
+    # print('delta1:     ', delta1)
+    # # print('delta1**2:  ', delta1**2)
+    # # print('1:          ', 4*delta0**2//b*delta0)
+    # # print(delta1 + sqrt)
+    # # print('sqrt:       ', sqrt)
+    # print('b_cbrt:     ', b_cbrt)
+    # print('second_cbrt:', second_cbrt)
+    # print('C1:         ', C1)
+
     root_K0: int256 = (b + b*delta0/C1 - C1)/3
     root: uint256 = convert(D*D/27/x_k*D/x_j*root_K0/a, uint256)
 
