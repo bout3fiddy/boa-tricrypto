@@ -289,7 +289,7 @@ def get_y_safe_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint
     if sqrt_arg > 0:
         sqrt_val = convert(isqrt(convert(sqrt_arg, uint256)), int256)
     else:
-        sqrt_val = -convert(isqrt(convert(-sqrt_arg, uint256)), int256)
+        return [0, 0]
 
     second_cbrt: int256 = 0
     if delta1 > 0:
