@@ -56,5 +56,6 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
     note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}""}\n")
     assert (
         abs(result_original - result_get_y) <= max(10**4, result_original/1e6) or
-        abs(calculate_F_by_y0(result_get_y)) <= abs(calculate_F_by_y0(result_original))
+        abs(calculate_F_by_y0(result_get_y)) <= abs(calculate_F_by_y0(result_original)) or
+        result_get_y == 0
     )
