@@ -289,7 +289,7 @@ def get_y_safe_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint
     if sqrt_arg > 0:
         sqrt_val = convert(isqrt(convert(sqrt_arg, uint256)), int256)
     else:
-        return [0, 0]
+        return [self._newton_y(_ANN, _gamma, x, _D, i), 0]
 
     second_cbrt: int256 = 0
     if delta1 > 0:
@@ -298,21 +298,6 @@ def get_y_safe_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint
         second_cbrt = -convert(self.cbrt(convert(-(delta1 - sqrt_val), uint256)/2), int256)
 
     C1: int256 = b_cbrt*b_cbrt/10**18*second_cbrt/10**18
-
-    # print('\nVyper')
-    # # print('a:          ', a)
-    # # print('b:          ', b)
-    # # print('c:          ', c)
-    # # print('d:          ', d)
-    # print('delta0:     ', delta0)
-    # print('delta1:     ', delta1)
-    # # print('delta1**2:  ', delta1**2)
-    # # print('1:          ', 4*delta0**2//b*delta0)
-    # # print(delta1 + sqrt)
-    # # print('sqrt:       ', sqrt)
-    # print('b_cbrt:     ', b_cbrt)
-    # print('second_cbrt:', second_cbrt)
-    # print('C1:         ', C1)
 
     root_K0: int256 = (b + b*delta0/C1 - C1)/3
     root: uint256 = convert(D*D/27/x_k*D/x_j*root_K0/a, uint256)
@@ -574,6 +559,11 @@ def get_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint
 @external
 @view
 def newton_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256:
+    return self._newton_y(ANN, gamma, x, D, i)
+
+@internal
+@view
+def _newton_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256:
     """
     Calculating x[i] given other balances x[0..N_COINS-1] and invariant D
     ANN = A * N**N

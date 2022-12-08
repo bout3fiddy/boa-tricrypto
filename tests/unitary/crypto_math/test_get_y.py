@@ -10,7 +10,7 @@ from simulation_ma_4 import inv_target_decimal as inv_target
 
 
 N_COINS = 3
-MAX_SAMPLES = 100000  # Increase for fuzzing
+MAX_SAMPLES = 1000000  # Increase for fuzzing
 
 A_MUL = 10000 * 3**3
 MIN_A = int(0.01 * A_MUL)
@@ -55,7 +55,7 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
             return
     note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}""}\n")
     assert (
-        abs(result_original - result_get_y) <= max(10**4, result_original/1e6) or
+        abs(result_original - result_get_y) <= max(10**4, result_original/1e8) or
         abs(calculate_F_by_y0(result_get_y)) <= abs(calculate_F_by_y0(result_original)) or
         result_get_y == 0
     )
