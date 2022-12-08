@@ -302,7 +302,7 @@ def get_y_safe_int(_ANN: uint256, _gamma: uint256, x: uint256[N_COINS], _D: uint
     root_K0: int256 = (b + b*delta0/C1 - C1)/3
     root: uint256 = convert(D*D/27/x_k*D/x_j*root_K0/a, uint256)
 
-    return [root, convert(root_K0/a, uint256)]
+    return [root, convert(10**18*root_K0/a, uint256)]
 
 @external
 @view
