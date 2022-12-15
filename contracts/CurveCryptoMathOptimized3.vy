@@ -723,7 +723,7 @@ def newton_D(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS], K0_prev
     if K0_prev == 0:
         D = N_COINS * self._geometric_mean(x, False)
     else:
-        D = self.cbrt(x_unsorted[0]*x_unsorted[1]/10**18*x_unsorted[2]*27/K0_prev)*10**6
+        D = self.cbrt(x_unsorted[0]*x_unsorted[1]/10**18*x_unsorted[2]*27/K0_prev)
 
     for i in range(255):
         D_prev: uint256 = D

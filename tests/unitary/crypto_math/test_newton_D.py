@@ -29,15 +29,15 @@ pytest.progress = 0
        zD=st.integers(min_value=int(1.001e16), max_value=int(0.999e20)),  # <- ratio 1e18 * z/D, typically 1e18 * 1
        gamma=st.integers(min_value=MIN_GAMMA, max_value=MAX_GAMMA),
        j=st.integers(min_value=0, max_value=2),
-       ethScalePrice=st.integers(min_value=10**2, max_value=10**4),
        btcScalePrice=st.integers(min_value=10**4, max_value=10**5),
+       ethScalePrice=st.integers(min_value=10**2, max_value=10**4),
        mid_fee=st.sampled_from((int(0.7e-3 * 10**10), int(1e-3 * 10**10), int(1.2e-3 * 10**10), int(4e-3 * 10**10))),
        out_fee=st.sampled_from((int(4.0e-3 * 10**10), int(10.0e-3 * 10**10))),
        fee_gamma=st.sampled_from((int(1e-2 * 1e18), int(2e-6 * 1e18))),
 )
 
 @settings(max_examples=MAX_SAMPLES, deadline=timedelta(seconds=1000))
-def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j, ethScalePrice, btcScalePrice, mid_fee, out_fee, fee_gamma):
+def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePrice, mid_fee, out_fee, fee_gamma):
     pytest.progress += 1
     if pytest.progress % 100 == 0:
         print(f"{pytest.progress} cases processed ...")
@@ -55,9 +55,8 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j, ethScalePrice, btcSca
             raise
         else:
             return
-    note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}""}\n")
 
-    price_scale = (1, ethScalePrice, btcScalePrice)
+    price_scale = (btcScalePrice, ethScalePrice)
     y = X[j]
     dy = X[j] - result_get_y
     dy -= 1
@@ -71,6 +70,6 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j, ethScalePrice, btcSca
     X[j] = y
 
     result_sim = tricrypto_math.newton_D(A, gamma, X)
-    if all(f >= 1.1e16 and f <= 0.9e20 for f in [_x * 10**18 / result_sim for _x in X]):
-        result_contract = tricrypto_math.newton_D(A, gamma, X, K0)
-        assert abs(result_sim - result_contract) <= max(1000, result_sim/1e15)
+    result_contract = tricrypto_math.newton_D(A, gamma, X, K0)
+    note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}, 'btcScalePrice': {btcScalePrice}, 'ethScalePrice': {ethScalePrice}, 'mid_fee': {mid_fee}, 'out_fee': {out_fee}, 'fee_gamma': {fee_gamma}""}\n")
+    assert abs(result_sim - result_contract) <= max(10000, result_sim/1e12)
