@@ -19,6 +19,8 @@ MAX_A = 1000 * A_MUL
 MIN_GAMMA = 10**10
 MAX_GAMMA = 5 * 10**16
 
+pytest.progress = 0
+
 @given(
        A=st.integers(min_value=MIN_A, max_value=MAX_A),
        D=st.integers(min_value=10**18, max_value=10**14 * 10**18),  # 1 USD to 100T USD
@@ -29,13 +31,16 @@ MAX_GAMMA = 5 * 10**16
        j=st.integers(min_value=0, max_value=2),
        ethScalePrice=st.integers(min_value=10**2, max_value=10**4),
        btcScalePrice=st.integers(min_value=10**4, max_value=10**5),
-       mid_fee=st.sampled_from((0.7e-3, 1e-3, 1.2e-3, 4e-3)),
-       out_fee=st.sampled_from((4.0e-3, 10.0e-3)),
+       mid_fee=st.sampled_from((int(0.7e-3 * 10**10), int(1e-3 * 10**10), int(1.2e-3 * 10**10), int(4e-3 * 10**10))),
+       out_fee=st.sampled_from((int(4.0e-3 * 10**10), int(10.0e-3 * 10**10))),
        fee_gamma=st.sampled_from((int(1e-2 * 1e18), int(2e-6 * 1e18))),
 )
 
 @settings(max_examples=MAX_SAMPLES, deadline=timedelta(seconds=1000))
 def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j, ethScalePrice, btcScalePrice, mid_fee, out_fee, fee_gamma):
+    pytest.progress += 1
+    if pytest.progress % 100 == 0:
+        print(f"{pytest.progress} cases processed ...")
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
 
     try:
@@ -64,9 +69,6 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j, ethScalePrice, btcSca
     dy -= fee * dy // 10**10
     y -= dy
     X[j] = y
-
-    print(f'Fee: {fee}\n')
-    assert fee != 0.
 
     result_sim = tricrypto_math.newton_D(A, gamma, X)
     if all(f >= 1.1e16 and f <= 0.9e20 for f in [_x * 10**18 / result_sim for _x in X]):

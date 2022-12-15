@@ -704,16 +704,16 @@ def newton_D(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS], K0_prev
     Currently uses 60k gas
     """
     # Safety checks
-    assert ANN > MIN_A - 1 and ANN < MAX_A + 1  # dev: unsafe values A
-    assert gamma > MIN_GAMMA - 1 and gamma < MAX_GAMMA + 1  # dev: unsafe values gamma
+    # assert ANN > MIN_A - 1 and ANN < MAX_A + 1  # dev: unsafe values A
+    # assert gamma > MIN_GAMMA - 1 and gamma < MAX_GAMMA + 1  # dev: unsafe values gamma
 
     # Initial value of invariant D is that for constant-product invariant
     x: uint256[N_COINS] = self.sort(x_unsorted)
 
-    assert x[0] > 10**9 - 1 and x[0] < 10**15 * 10**18 + 1  # dev: unsafe values x[0]
-    for i in range(1, N_COINS):
-        frac: uint256 = x[i] * 10**18 / x[0]
-        assert frac > 10**11-1  # dev: unsafe values x[i]
+    # assert x[0] > 10**9 - 1 and x[0] < 10**15 * 10**18 + 1  # dev: unsafe values x[0]
+    # for i in range(1, N_COINS):
+    #     frac: uint256 = x[i] * 10**18 / x[0]
+    #     assert frac > 10**11-1  # dev: unsafe values x[i]
 
     S: uint256 = 0
     for x_i in x:
@@ -769,7 +769,7 @@ def newton_D(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS], K0_prev
             # Test that we are safe with the next newton_y
             for _x in x:
                 frac: uint256 = _x * 10**18 / D
-                assert (frac > 10**16 - 1) and (frac < 10**20 + 1)  # dev: unsafe values x[i]
+                # assert (frac > 10**16 - 1) and (frac < 10**20 + 1)  # dev: unsafe values x[i]
             return D
 
     raise "Did not converge"
