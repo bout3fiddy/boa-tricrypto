@@ -21,6 +21,13 @@ def geometric_mean(x):
     raise ValueError("Did not converge")
 
 
+def get_fee(x, fee_gamma, mid_fee, out_fee):
+        f = reduction_coefficient(x, fee_gamma)
+        print(f'Reduction coeff: {f}')
+        print(mid_fee * f)
+        print(out_fee * (10**18 - f))
+        return (mid_fee * f + out_fee * (10**18 - f)) // 10**18
+
 def reduction_coefficient(x, gamma):
     N = len(x)
     x_prod = 10**18
