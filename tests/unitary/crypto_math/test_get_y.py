@@ -10,7 +10,7 @@ from simulation_ma_4 import inv_target_decimal as inv_target
 
 
 N_COINS = 3
-MAX_SAMPLES = 1000000  # Increase for fuzzing
+MAX_SAMPLES = 10000  # Increase for fuzzing
 
 A_MUL = 10000 * 3**3
 MIN_A = int(0.01 * A_MUL)
@@ -19,6 +19,11 @@ MAX_A = 1000 * A_MUL
 # gamma from 1e-8 up to 0.05
 MIN_GAMMA = 10**10
 MAX_GAMMA = 5 * 10**16
+
+pytest.current_case_id = 0
+pytest.negative_sqrt_arg = 0
+pytest.gas_original = 0
+pytest.gas_new = 0
 
 @given(
        A=st.integers(min_value=MIN_A, max_value=MAX_A),
@@ -31,6 +36,7 @@ MAX_GAMMA = 5 * 10**16
 )
 @settings(max_examples=MAX_SAMPLES, deadline=timedelta(seconds=1000))
 def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
+    pytest.current_case_id += 1
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
 
     A_dec = Decimal(A) / 10000 / 27
@@ -41,8 +47,12 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
         return inv_target(A_dec, gamma, new_X, D)
 
     result_original = tricrypto_math.newton_y(A, gamma, X, D, j)
+    pytest.gas_original += tricrypto_math._computation.get_gas_used()
+
     try:
-        (result_get_y, K0) = tricrypto_math.get_y_safe_int(A, gamma, X, D, j)
+        (result_get_y, K0) = tricrypto_math.get_y_int(A, gamma, X, D, j)
+        print(tricrypto_math._computation.get_gas_used())
+        pytest.gas_new += tricrypto_math._computation.get_gas_used()
     except Exception:
         # May revert is the state is unsafe for the next time
         safe = all(f >= 1.1e16 and f <= 0.9e20 for f in [_x * 10**18 // D for _x in X])
@@ -54,6 +64,16 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
         else:
             return
     note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}""}\n")
+
+    if K0 == 0:
+        pytest.negative_sqrt_arg += 1
+
+    if pytest.current_case_id % 10 == 0:
+        print(
+            f'{pytest.current_case_id}\nPositive dy frac: {pytest.negative_sqrt_arg/pytest.current_case_id}\n'
+            f'Gas advantage per call: {pytest.gas_original//pytest.current_case_id} {pytest.gas_new//pytest.current_case_id}\n'
+        )
+
     assert (
         abs(result_original - result_get_y) <= max(10**4, result_original/1e8) or
         abs(calculate_F_by_y0(result_get_y)) <= abs(calculate_F_by_y0(result_original)) or

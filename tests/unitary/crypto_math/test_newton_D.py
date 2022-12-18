@@ -20,6 +20,7 @@ MIN_GAMMA = 10**10
 MAX_GAMMA = 5 * 10**16
 
 pytest.progress = 0
+pytest.positive_dy = 0
 
 @given(
        A=st.integers(min_value=MIN_A, max_value=MAX_A),
@@ -29,18 +30,17 @@ pytest.progress = 0
        zD=st.integers(min_value=int(1.001e16), max_value=int(0.999e20)),  # <- ratio 1e18 * z/D, typically 1e18 * 1
        gamma=st.integers(min_value=MIN_GAMMA, max_value=MAX_GAMMA),
        j=st.integers(min_value=0, max_value=2),
-       btcScalePrice=st.integers(min_value=10**4, max_value=10**5),
-       ethScalePrice=st.integers(min_value=10**2, max_value=10**4),
+       btcScalePrice=st.integers(min_value=10**2, max_value=10**7),
+       ethScalePrice=st.integers(min_value=10, max_value=10**5),
        mid_fee=st.sampled_from((int(0.7e-3 * 10**10), int(1e-3 * 10**10), int(1.2e-3 * 10**10), int(4e-3 * 10**10))),
        out_fee=st.sampled_from((int(4.0e-3 * 10**10), int(10.0e-3 * 10**10))),
        fee_gamma=st.sampled_from((int(1e-2 * 1e18), int(2e-6 * 1e18))),
 )
-
 @settings(max_examples=MAX_SAMPLES, deadline=timedelta(seconds=1000))
-def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePrice, mid_fee, out_fee, fee_gamma):
+def test_newton_D(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePrice, mid_fee, out_fee, fee_gamma):
     pytest.progress += 1
     if pytest.progress % 100 == 0:
-        print(f"{pytest.progress} cases processed ...")
+        print(f"{pytest.progress} cases processed\t{pytest.positive_dy} dy > 0 ...")
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
 
     try:
@@ -56,20 +56,31 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethSca
         else:
             return
 
-    price_scale = (btcScalePrice, ethScalePrice)
-    y = X[j]
-    dy = X[j] - result_get_y
-    dy -= 1
+    # print(X)
+    # print(f'X[j]:         {X[j]}')
+    # print(f'result_get_y: {result_get_y}')
+    if result_get_y < X[j]:
 
-    if j > 0:
-        dy = dy * 10**18 // price_scale[j-1]
+        price_scale = (btcScalePrice, ethScalePrice)
+        y = X[j]
+        dy = X[j] - result_get_y
+        dy -= 1
 
-    fee = sim.get_fee(X, fee_gamma, mid_fee, out_fee)
-    dy -= fee * dy // 10**10
-    y -= dy
-    X[j] = y
+        # print(f'dy:           {dy}')
 
-    result_sim = tricrypto_math.newton_D(A, gamma, X)
-    result_contract = tricrypto_math.newton_D(A, gamma, X, K0)
-    note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}, 'btcScalePrice': {btcScalePrice}, 'ethScalePrice': {ethScalePrice}, 'mid_fee': {mid_fee}, 'out_fee': {out_fee}, 'fee_gamma': {fee_gamma}""}\n")
-    assert abs(result_sim - result_contract) <= max(10000, result_sim/1e12)
+        if j > 0:
+            dy = dy * 10**18 // price_scale[j-1]
+
+        fee = sim.get_fee(X, fee_gamma, mid_fee, out_fee)
+        dy -= fee * dy // 10**10
+        y -= dy
+
+        if y > 100:
+            print("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}, 'btcScalePrice': {btcScalePrice}, 'ethScalePrice': {ethScalePrice}, 'mid_fee': {mid_fee}, 'out_fee': {out_fee}, 'fee_gamma': {fee_gamma}""}\n")
+            pytest.positive_dy += 1
+            X[j] = y
+
+            result_sim = tricrypto_math.newton_D(A, gamma, X)
+            result_contract = tricrypto_math.newton_D(A, gamma, X, K0)
+            note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}, 'btcScalePrice': {btcScalePrice}, 'ethScalePrice': {ethScalePrice}, 'mid_fee': {mid_fee}, 'out_fee': {out_fee}, 'fee_gamma': {fee_gamma}""}\n")
+            assert abs(result_sim - result_contract) <= max(10000, result_sim/1e12)
