@@ -10,7 +10,7 @@ from simulation_ma_4 import inv_target_decimal as inv_target
 
 
 N_COINS = 3
-MAX_SAMPLES = 10000  # Increase for fuzzing
+MAX_SAMPLES = 1000000  # Increase for fuzzing
 
 A_MUL = 10000 * 3**3
 MIN_A = int(0.01 * A_MUL)
@@ -68,9 +68,9 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
     if K0 == 0:
         pytest.negative_sqrt_arg += 1
 
-    if pytest.current_case_id % 10 == 0:
+    if pytest.current_case_id % 100 == 0:
         print(
-            f'{pytest.current_case_id}\nPositive dy frac: {pytest.negative_sqrt_arg/pytest.current_case_id}\n'
+            f'---{pytest.current_case_id}\nPositive dy frac: {100*pytest.negative_sqrt_arg/pytest.current_case_id:.1f}%\n'
             f'Gas advantage per call: {pytest.gas_original//pytest.current_case_id} {pytest.gas_new//pytest.current_case_id}\n'
         )
 
