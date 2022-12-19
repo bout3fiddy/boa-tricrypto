@@ -1,5 +1,6 @@
 import boa
 import pytest
+import time
 import simulation_int_many as sim
 from hypothesis import example, given, settings, note
 from hypothesis import strategies as st
@@ -24,6 +25,7 @@ pytest.current_case_id = 0
 pytest.negative_sqrt_arg = 0
 pytest.gas_original = 0
 pytest.gas_new = 0
+pytest.t_start = time.time()
 
 @given(
        A=st.integers(min_value=MIN_A, max_value=MAX_A),
@@ -51,7 +53,6 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
 
     try:
         (result_get_y, K0) = tricrypto_math.get_y_int(A, gamma, X, D, j)
-        print(tricrypto_math._computation.get_gas_used())
         pytest.gas_new += tricrypto_math._computation.get_gas_used()
     except Exception:
         # May revert is the state is unsafe for the next time
@@ -70,12 +71,11 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
 
     if pytest.current_case_id % 100 == 0:
         print(
-            f'---{pytest.current_case_id}\nPositive dy frac: {100*pytest.negative_sqrt_arg/pytest.current_case_id:.1f}%\n'
+            f'--- {pytest.current_case_id}\nPositive dy frac: {100*pytest.negative_sqrt_arg/pytest.current_case_id:.1f}%\t{time.time() - pytest.t_start:.1f} seconds.\n'
             f'Gas advantage per call: {pytest.gas_original//pytest.current_case_id} {pytest.gas_new//pytest.current_case_id}\n'
         )
 
     assert (
         abs(result_original - result_get_y) <= max(10**4, result_original/1e8) or
-        abs(calculate_F_by_y0(result_get_y)) <= abs(calculate_F_by_y0(result_original)) or
-        result_get_y == 0
+        abs(calculate_F_by_y0(result_get_y)) <= abs(calculate_F_by_y0(result_original))
     )
