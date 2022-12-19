@@ -44,7 +44,7 @@ def test_newton_D(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, eth
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
 
     try:
-        (result_get_y, K0) = tricrypto_math.get_y_safe_int(A, gamma, X, D, j)
+        (result_get_y, K0) = tricrypto_math.get_y_int(A, gamma, X, D, j)
     except Exception:
         # May revert is the state is unsafe for the next time
         safe = all(f >= 1.1e16 and f <= 0.9e20 for f in [_x * 10**18 // D for _x in X])
@@ -56,9 +56,7 @@ def test_newton_D(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, eth
         else:
             return
 
-    # print(X)
-    # print(f'X[j]:         {X[j]}')
-    # print(f'result_get_y: {result_get_y}')
+    # dy should be positive
     if result_get_y < X[j]:
 
         price_scale = (btcScalePrice, ethScalePrice)
@@ -75,7 +73,7 @@ def test_newton_D(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, eth
         dy -= fee * dy // 10**10
         y -= dy
 
-        if y > 100:
+        if dy/y <= 0.95:
             print("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}, 'btcScalePrice': {btcScalePrice}, 'ethScalePrice': {ethScalePrice}, 'mid_fee': {mid_fee}, 'out_fee': {out_fee}, 'fee_gamma': {fee_gamma}""}\n")
             pytest.positive_dy += 1
             X[j] = y
