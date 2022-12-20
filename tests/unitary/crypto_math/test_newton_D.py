@@ -1,4 +1,5 @@
 import boa
+import time
 import pytest
 import simulation_int_many as sim
 from hypothesis import example, given, settings, note
@@ -21,8 +22,20 @@ MAX_GAMMA = 5 * 10**16
 
 pytest.progress = 0
 pytest.positive_dy = 0
+pytest.t_start = time.time()
 
-@given(
+
+mid_fee_list = [int(0.7e-3 * 10**10), int(1e-3 * 10**10), int(1.2e-3 * 10**10), int(4e-3 * 10**10)]
+out_fee_list = [int(4.0e-3 * 10**10), int(10.0e-3 * 10**10)]
+fee_gamma_list = [int(1e-2 * 1e18), int(2e-6 * 1e18)]
+
+func_counter = 0
+for mid_fee in mid_fee_list:
+    for out_fee in out_fee_list:
+        for fee_gamma in fee_gamma_list:
+            func_counter += 1
+            exec(
+f'''@given(
        A=st.integers(min_value=MIN_A, max_value=MAX_A),
        D=st.integers(min_value=10**18, max_value=10**14 * 10**18),  # 1 USD to 100T USD
        xD=st.integers(min_value=int(1.001e16), max_value=int(0.999e20)),  # <- ratio 1e18 * x/D, typically 1e18 * 1
@@ -32,15 +45,19 @@ pytest.positive_dy = 0
        j=st.integers(min_value=0, max_value=2),
        btcScalePrice=st.integers(min_value=10**2, max_value=10**7),
        ethScalePrice=st.integers(min_value=10, max_value=10**5),
-       mid_fee=st.sampled_from((int(0.7e-3 * 10**10), int(1e-3 * 10**10), int(1.2e-3 * 10**10), int(4e-3 * 10**10))),
-       out_fee=st.sampled_from((int(4.0e-3 * 10**10), int(10.0e-3 * 10**10))),
-       fee_gamma=st.sampled_from((int(1e-2 * 1e18), int(2e-6 * 1e18))),
+       mid_fee=st.sampled_from(({mid_fee},)),
+       out_fee=st.sampled_from(({out_fee},)),
+       fee_gamma=st.sampled_from(({fee_gamma},)),
 )
 @settings(max_examples=MAX_SAMPLES, deadline=timedelta(seconds=1000))
-def test_newton_D(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePrice, mid_fee, out_fee, fee_gamma):
+def test_newton_D{func_counter}(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePrice, mid_fee, out_fee, fee_gamma):
+    main(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePrice, mid_fee, out_fee, fee_gamma)'''
+            )
+
+def main(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePrice, mid_fee, out_fee, fee_gamma):
     pytest.progress += 1
     if pytest.progress % 100 == 0:
-        print(f"{pytest.progress} cases processed\t{pytest.positive_dy} dy > 0 ...")
+        print(f"{pytest.progress} | {pytest.positive_dy} cases processed in {time.time()-pytest.t_start:.1f} seconds.")
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
 
     try:
