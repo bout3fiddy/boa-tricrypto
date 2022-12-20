@@ -535,8 +535,7 @@ def _newton_y(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: 
             # assert (frac > 10**16 - 1) and (frac < 10**20 + 1)  # dev: unsafe value for y
             return y
 
-    # raise "Did not converge"
-    return y
+    raise "Did not converge"
 
 
 @external

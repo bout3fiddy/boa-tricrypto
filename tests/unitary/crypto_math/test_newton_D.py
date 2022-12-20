@@ -73,12 +73,11 @@ def test_newton_D(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, eth
         dy -= fee * dy // 10**10
         y -= dy
 
-        if dy/y <= 0.95:
+        if dy/X[j] <= 0.95:
             print("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}, 'btcScalePrice': {btcScalePrice}, 'ethScalePrice': {ethScalePrice}, 'mid_fee': {mid_fee}, 'out_fee': {out_fee}, 'fee_gamma': {fee_gamma}""}\n")
             pytest.positive_dy += 1
             X[j] = y
 
             result_sim = tricrypto_math.newton_D(A, gamma, X)
             result_contract = tricrypto_math.newton_D(A, gamma, X, K0)
-            note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}, 'btcScalePrice': {btcScalePrice}, 'ethScalePrice': {ethScalePrice}, 'mid_fee': {mid_fee}, 'out_fee': {out_fee}, 'fee_gamma': {fee_gamma}""}\n")
             assert abs(result_sim - result_contract) <= max(10000, result_sim/1e12)
