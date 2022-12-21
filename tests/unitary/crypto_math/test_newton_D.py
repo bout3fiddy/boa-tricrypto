@@ -1,6 +1,8 @@
 import boa
 import time
 import pytest
+import sys
+import logging
 import simulation_int_many as sim
 from hypothesis import example, given, settings, note
 from hypothesis import strategies as st
@@ -9,8 +11,10 @@ from datetime import timedelta
 from decimal import Decimal
 
 
+sys.stdout = sys.stderr
+
 N_COINS = 3
-MAX_SAMPLES = 1000000  # Increase for fuzzing
+MAX_SAMPLES = 10000  # Increase for fuzzing
 
 A_MUL = 10000 * 3**3
 MIN_A = int(0.01 * A_MUL)
@@ -39,7 +43,7 @@ for mid_fee in mid_fee_list:
 f'''@given(
        A=st.integers(min_value=MIN_A, max_value=MAX_A),
        D=st.integers(min_value=10**18, max_value=10**14 * 10**18),  # 1 USD to 100T USD
-       xD=st.integers(min_value=int(1.001e16), max_value=int(0.999e20)),  # <- ratio 1e18 * x/D, typically 1e18 * 1
+       xD=st.integers(min_value=int(1.001e16), max_value=int(0.999e100)),  # <- ratio 1e18 * x/D, typically 1e18 * 1
        yD=st.integers(min_value=int(1.001e16), max_value=int(0.999e20)),  # <- ratio 1e18 * y/D, typically 1e18 * 1
        zD=st.integers(min_value=int(1.001e16), max_value=int(0.999e20)),  # <- ratio 1e18 * z/D, typically 1e18 * 1
        gamma=st.integers(min_value=MIN_GAMMA, max_value=MAX_GAMMA),
@@ -57,23 +61,12 @@ def test_newton_D{func_counter}(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcS
 
 def main(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePrice, mid_fee, out_fee, fee_gamma):
     pytest.progress += 1
-    if pytest.progress % 100 == 0:
+    if pytest.progress % 100 == 0 and pytest.positive_dy != 0:
         print(f"{pytest.progress} | {pytest.positive_dy} cases processed in {time.time()-pytest.t_start:.1f} seconds."
               f'Gas advantage per call: {pytest.gas_original//pytest.positive_dy} {pytest.gas_new//pytest.positive_dy}\n')
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
 
-    try:
-        (result_get_y, K0) = tricrypto_math.get_y_int(A, gamma, X, D, j)
-    except Exception:
-        # May revert is the state is unsafe for the next time
-        safe = all(f >= 1.1e16 and f <= 0.9e20 for f in [_x * 10**18 // D for _x in X])
-        XX = X[:]
-        XX[j] = result_original
-        safe &= all(f >= 1.1e16 and f <= 0.9e20 for f in [_x * 10**18 // D for _x in XX])
-        if safe:
-            raise
-        else:
-            return
+    (result_get_y, K0) = tricrypto_math.get_y_int(A, gamma, X, D, j)
 
     # dy should be positive
     if result_get_y < X[j]:
