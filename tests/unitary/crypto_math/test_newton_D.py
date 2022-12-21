@@ -2,7 +2,6 @@ import boa
 import time
 import pytest
 import sys
-import logging
 import simulation_int_many as sim
 from hypothesis import example, given, settings, note
 from hypothesis import strategies as st
@@ -84,7 +83,6 @@ def main(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePric
         y -= dy
 
         if dy/X[j] <= 0.95:
-            print("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}, 'btcScalePrice': {btcScalePrice}, 'ethScalePrice': {ethScalePrice}, 'mid_fee': {mid_fee}, 'out_fee': {out_fee}, 'fee_gamma': {fee_gamma}""}\n")
             pytest.positive_dy += 1
             X[j] = y
 
