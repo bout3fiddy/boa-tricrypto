@@ -23,7 +23,8 @@ MAX_GAMMA = 5 * 10**16
 pytest.progress = 0
 pytest.positive_dy = 0
 pytest.t_start = time.time()
-
+pytest.gas_original = 0
+pytest.gas_new = 0
 
 mid_fee_list = [int(0.7e-3 * 10**10), int(1e-3 * 10**10), int(1.2e-3 * 10**10), int(4e-3 * 10**10)]
 out_fee_list = [int(4.0e-3 * 10**10), int(10.0e-3 * 10**10)]
@@ -57,7 +58,8 @@ def test_newton_D{func_counter}(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcS
 def main(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePrice, mid_fee, out_fee, fee_gamma):
     pytest.progress += 1
     if pytest.progress % 100 == 0:
-        print(f"{pytest.progress} | {pytest.positive_dy} cases processed in {time.time()-pytest.t_start:.1f} seconds.")
+        print(f"{pytest.progress} | {pytest.positive_dy} cases processed in {time.time()-pytest.t_start:.1f} seconds."
+              f'Gas advantage per call: {pytest.gas_original//pytest.positive_dy} {pytest.gas_new//pytest.positive_dy}\n')
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
 
     try:
@@ -81,8 +83,6 @@ def main(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePric
         dy = X[j] - result_get_y
         dy -= 1
 
-        # print(f'dy:           {dy}')
-
         if j > 0:
             dy = dy * 10**18 // price_scale[j-1]
 
@@ -96,5 +96,7 @@ def main(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePric
             X[j] = y
 
             result_sim = tricrypto_math.newton_D(A, gamma, X)
+            pytest.gas_original += tricrypto_math._computation.get_gas_used()
             result_contract = tricrypto_math.newton_D(A, gamma, X, K0)
+            pytest.gas_new += tricrypto_math._computation.get_gas_used()
             assert abs(result_sim - result_contract) <= max(10000, result_sim/1e12)
