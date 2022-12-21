@@ -13,7 +13,7 @@ from decimal import Decimal
 sys.stdout = sys.stderr
 
 N_COINS = 3
-MAX_SAMPLES = 10000  # Increase for fuzzing
+MAX_SAMPLES = 1000000  # Increase for fuzzing
 
 A_MUL = 10000 * 3**3
 MIN_A = int(0.01 * A_MUL)
@@ -42,7 +42,7 @@ for mid_fee in mid_fee_list:
 f'''@given(
        A=st.integers(min_value=MIN_A, max_value=MAX_A),
        D=st.integers(min_value=10**18, max_value=10**14 * 10**18),  # 1 USD to 100T USD
-       xD=st.integers(min_value=int(1.001e16), max_value=int(0.999e100)),  # <- ratio 1e18 * x/D, typically 1e18 * 1
+       xD=st.integers(min_value=int(1.001e16), max_value=int(0.999e20)),  # <- ratio 1e18 * x/D, typically 1e18 * 1
        yD=st.integers(min_value=int(1.001e16), max_value=int(0.999e20)),  # <- ratio 1e18 * y/D, typically 1e18 * 1
        zD=st.integers(min_value=int(1.001e16), max_value=int(0.999e20)),  # <- ratio 1e18 * z/D, typically 1e18 * 1
        gamma=st.integers(min_value=MIN_GAMMA, max_value=MAX_GAMMA),
