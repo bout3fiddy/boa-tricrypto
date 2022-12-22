@@ -51,19 +51,8 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
     result_original = tricrypto_math.newton_y(A, gamma, X, D, j)
     pytest.gas_original += tricrypto_math._computation.get_gas_used()
 
-    try:
-        (result_get_y, K0) = tricrypto_math.get_y_int(A, gamma, X, D, j)
-        pytest.gas_new += tricrypto_math._computation.get_gas_used()
-    except Exception:
-        # May revert is the state is unsafe for the next time
-        safe = all(f >= 1.1e16 and f <= 0.9e20 for f in [_x * 10**18 // D for _x in X])
-        XX = X[:]
-        XX[j] = result_original
-        safe &= all(f >= 1.1e16 and f <= 0.9e20 for f in [_x * 10**18 // D for _x in XX])
-        if safe:
-            raise
-        else:
-            return
+    (result_get_y, K0) = tricrypto_math.get_y_int(A, gamma, X, D, j)
+    pytest.gas_new += tricrypto_math._computation.get_gas_used()
     note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}""}\n")
 
     if K0 == 0:
