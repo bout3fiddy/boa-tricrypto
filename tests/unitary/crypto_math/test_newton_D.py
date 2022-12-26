@@ -65,7 +65,7 @@ def main(tricrypto_math, A, D, xD, yD, zD, gamma, j, btcScalePrice, ethScalePric
               f'Gas advantage per call: {pytest.gas_original//pytest.positive_dy} {pytest.gas_new//pytest.positive_dy}\n')
     X = [D * xD // 10**18, D * yD // 10**18, D * zD // 10**18]
 
-    (result_get_y, K0) = tricrypto_math.get_y_int(A, gamma, X, D, j)
+    (result_get_y, K0) = tricrypto_math.get_y(A, gamma, X, D, j)
 
     # dy should be positive
     if result_get_y < X[j]:

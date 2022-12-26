@@ -51,7 +51,7 @@ def test_get_y(tricrypto_math, A, D, xD, yD, zD, gamma, j):
     result_original = tricrypto_math.newton_y(A, gamma, X, D, j)
     pytest.gas_original += tricrypto_math._computation.get_gas_used()
 
-    (result_get_y, K0) = tricrypto_math.get_y_int(A, gamma, X, D, j)
+    (result_get_y, K0) = tricrypto_math.get_y(A, gamma, X, D, j)
     pytest.gas_new += tricrypto_math._computation.get_gas_used()
     note("{"f"'ANN': {A}, 'D': {D}, 'xD': {xD}, 'yD': {yD}, 'zD': {zD}, 'GAMMA': {gamma}, 'index': {j}""}\n")
 
